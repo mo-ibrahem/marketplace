@@ -37,20 +37,26 @@ export default function AuthSellPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user, loading } = useAuth()
-  const tabParam = searchParams.get("tab")
 
-  // Set default tab based on URL parameter
+  // Set default tab based on URL parameter with safe fallback
   const [activeTab, setActiveTab] = useState("login")
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
+  // Safely handle search params
   useEffect(() => {
-    if (tabParam === "signup") {
-      setActiveTab("signup")
-    } else if (tabParam === "sell") {
-      setActiveTab("sell")
+    try {
+      const tabParam = searchParams?.get("tab")
+      if (tabParam === "signup") {
+        setActiveTab("signup")
+      } else if (tabParam === "sell") {
+        setActiveTab("sell")
+      }
+    } catch (error) {
+      console.warn("Error reading search params:", error)
+      // Fallback to default tab
     }
-  }, [tabParam])
+  }, [searchParams])
 
   // Redirect if user is already logged in and trying to access auth tabs
   useEffect(() => {
