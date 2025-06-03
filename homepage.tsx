@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
 import { useAuth } from "@/hooks/useAuth"
 import { auth } from "@/lib/supabase"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export default function Component() {
   const { user, loading } = useAuth()
@@ -95,14 +96,22 @@ export default function Component() {
                           Sell
                         </Button>
                       </Link>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-600 hidden md:block">
-                          Hi, {user.user_metadata?.full_name || user.email?.split("@")[0]}
-                        </span>
-                        <Button variant="ghost" onClick={handleSignOut} className="text-gray-700 hover:text-gray-900">
-                          Sign Out
+                      <Link href="/profile">
+                        <Button variant="ghost" className="text-gray-700 hover:text-gray-900 flex items-center">
+                          <Avatar className="h-6 w-6 mr-2">
+                            <AvatarImage src="/placeholder.svg" />
+                            <AvatarFallback className="text-xs">
+                              {user.user_metadata?.full_name?.charAt(0) || user.email?.charAt(0) || "U"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="hidden md:block">
+                            {user.user_metadata?.full_name || user.email?.split("@")[0]}
+                          </span>
                         </Button>
-                      </div>
+                      </Link>
+                      <Button variant="ghost" onClick={handleSignOut} className="text-gray-700 hover:text-gray-900">
+                        Sign Out
+                      </Button>
                     </>
                   ) : (
                     <>

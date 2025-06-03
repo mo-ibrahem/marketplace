@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { Search, ShoppingCart, Filter, X, Star } from "lucide-react"
+import { Search, ShoppingCart, Filter, X, UserIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
@@ -10,147 +10,39 @@ import { Slider } from "@/components/ui/slider"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
-
-// Sample product data
-const products = [
-  {
-    id: 1,
-    title: "Wireless Bluetooth Headphones",
-    description: "Premium noise-cancelling headphones with 20-hour battery life",
-    price: 149.99,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Electronics",
-    condition: "New",
-    rating: 4.5,
-  },
-  {
-    id: 2,
-    title: "Smartphone Stand Holder",
-    description: "Adjustable aluminum stand compatible with all smartphones",
-    price: 24.99,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Electronics",
-    condition: "New",
-    rating: 4.2,
-  },
-  {
-    id: 3,
-    title: "Vintage Denim Jacket",
-    description: "Classic medium-wash denim jacket with button closure",
-    price: 59.99,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Fashion",
-    condition: "Used",
-    rating: 4.0,
-  },
-  {
-    id: 4,
-    title: "Smart Home Speaker",
-    description: "Voice-controlled speaker with premium sound quality",
-    price: 129.99,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Electronics",
-    condition: "New",
-    rating: 4.7,
-  },
-  {
-    id: 5,
-    title: "Ceramic Coffee Mug Set",
-    description: "Set of 4 handcrafted ceramic mugs in assorted colors",
-    price: 34.99,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Home",
-    condition: "New",
-    rating: 4.3,
-  },
-  {
-    id: 6,
-    title: "Wooden Cutting Board",
-    description: "Premium acacia wood cutting board with juice groove",
-    price: 29.99,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Home",
-    condition: "New",
-    rating: 4.6,
-  },
-  {
-    id: 7,
-    title: "Vintage Leather Backpack",
-    description: "Handcrafted genuine leather backpack with multiple compartments",
-    price: 89.99,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Fashion",
-    condition: "Used",
-    rating: 4.1,
-  },
-  {
-    id: 8,
-    title: "Stainless Steel Water Bottle",
-    description: "Vacuum insulated bottle that keeps drinks cold for 24 hours",
-    price: 19.99,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Home",
-    condition: "New",
-    rating: 4.4,
-  },
-  {
-    id: 9,
-    title: "Designer Sunglasses",
-    description: "UV protection sunglasses with polarized lenses",
-    price: 79.99,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Fashion",
-    condition: "New",
-    rating: 4.3,
-  },
-  {
-    id: 10,
-    title: "Wireless Gaming Mouse",
-    description: "High-precision gaming mouse with RGB lighting",
-    price: 69.99,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Electronics",
-    condition: "New",
-    rating: 4.6,
-  },
-  {
-    id: 11,
-    title: "Educational Building Blocks",
-    description: "Colorful building blocks set for creative learning",
-    price: 39.99,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Toys",
-    condition: "New",
-    rating: 4.8,
-  },
-  {
-    id: 12,
-    title: "Remote Control Car",
-    description: "Fast RC car with rechargeable battery and remote",
-    price: 49.99,
-    image: "/placeholder.svg?height=200&width=200",
-    category: "Toys",
-    condition: "New",
-    rating: 4.4,
-  },
-]
+import { productService, type Product } from "@/lib/products"
+import { useAuth } from "@/hooks/useAuth"
 
 // Available categories
-const categories = ["All Categories", "Electronics", "Fashion", "Home", "Toys"]
+const categories = [
+  "All Categories",
+  "Electronics",
+  "Fashion",
+  "Home",
+  "Toys",
+  "Books",
+  "Sports",
+  "Beauty",
+  "Automotive",
+]
 
 export default function ProductListing() {
   const searchParams = useSearchParams()
+  const { user } = useAuth()
 
   // State for filters
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All Categories")
-  const [priceRange, setPriceRange] = useState([0, 200])
+  const [priceRange, setPriceRange] = useState([0, 1000])
   const [conditions, setConditions] = useState({
-    new: true,
-    used: true,
+    New: true,
+    Used: true,
   })
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
 
   // Set initial category from URL params
   useEffect(() => {
@@ -160,34 +52,34 @@ export default function ProductListing() {
     }
   }, [searchParams])
 
-  // Filter products based on current filters
-  const filteredProducts = products.filter((product) => {
-    // Filter by search query
-    if (
-      searchQuery &&
-      !product.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !product.description.toLowerCase().includes(searchQuery.toLowerCase())
-    ) {
-      return false
+  // Load products
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        setLoading(true)
+        const conditionFilters = Object.entries(conditions)
+          .filter(([_, enabled]) => enabled)
+          .map(([condition]) => condition)
+
+        const filters = {
+          category: selectedCategory,
+          search: searchQuery,
+          minPrice: priceRange[0],
+          maxPrice: priceRange[1],
+          condition: conditionFilters,
+        }
+
+        const data = await productService.getProducts(filters)
+        setProducts(data)
+      } catch (error) {
+        console.error("Error loading products:", error)
+      } finally {
+        setLoading(false)
+      }
     }
 
-    // Filter by category
-    if (selectedCategory !== "All Categories" && product.category !== selectedCategory) {
-      return false
-    }
-
-    // Filter by price range
-    if (product.price < priceRange[0] || product.price > priceRange[1]) {
-      return false
-    }
-
-    // Filter by condition
-    if ((product.condition === "New" && !conditions.new) || (product.condition === "Used" && !conditions.used)) {
-      return false
-    }
-
-    return true
-  })
+    loadProducts()
+  }, [searchQuery, selectedCategory, priceRange, conditions])
 
   // Sidebar filter component
   const FilterSidebar = () => (
@@ -212,9 +104,9 @@ export default function ProductListing() {
         <h3 className="text-lg font-medium mb-3">Price Range</h3>
         <div className="px-2">
           <Slider
-            defaultValue={[0, 200]}
-            max={200}
-            step={1}
+            defaultValue={[0, 1000]}
+            max={1000}
+            step={10}
             value={priceRange}
             onValueChange={(value) => setPriceRange(value)}
             className="mb-6"
@@ -232,8 +124,8 @@ export default function ProductListing() {
           <div className="flex items-center space-x-2">
             <Checkbox
               id="new"
-              checked={conditions.new}
-              onCheckedChange={(checked) => setConditions({ ...conditions, new: checked === true })}
+              checked={conditions.New}
+              onCheckedChange={(checked) => setConditions({ ...conditions, New: checked === true })}
             />
             <label
               htmlFor="new"
@@ -245,8 +137,8 @@ export default function ProductListing() {
           <div className="flex items-center space-x-2">
             <Checkbox
               id="used"
-              checked={conditions.used}
-              onCheckedChange={(checked) => setConditions({ ...conditions, used: checked === true })}
+              checked={conditions.Used}
+              onCheckedChange={(checked) => setConditions({ ...conditions, Used: checked === true })}
             />
             <label
               htmlFor="used"
@@ -264,8 +156,8 @@ export default function ProductListing() {
         onClick={() => {
           setSearchQuery("")
           setSelectedCategory("All Categories")
-          setPriceRange([0, 200])
-          setConditions({ new: true, used: true })
+          setPriceRange([0, 1000])
+          setConditions({ New: true, Used: true })
         }}
       >
         Reset Filters
@@ -305,15 +197,19 @@ export default function ProductListing() {
 
             {/* Navigation Links */}
             <div className="flex items-center space-x-4">
-              <Link href="/products">
+              {user && (
+                <Link href="/profile">
+                  <Button variant="ghost" className="text-gray-700 hover:text-gray-900">
+                    <UserIcon className="h-4 w-4 mr-2" />
+                    Profile
+                  </Button>
+                </Link>
+              )}
+              <Link href="/auth">
                 <Button variant="ghost" className="text-gray-700 hover:text-gray-900">
-                  Browse Products
+                  {user ? "Account" : "Login"}
                 </Button>
               </Link>
-              <Button variant="ghost" className="text-gray-700 hover:text-gray-900">
-                Login
-              </Button>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">Sign Up</Button>
             </div>
           </div>
         </div>
@@ -383,7 +279,7 @@ export default function ProductListing() {
             {/* Top Filter Bar */}
             <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div className="text-sm text-gray-500">
-                Showing <span className="font-medium">{filteredProducts.length}</span> results
+                Showing <span className="font-medium">{products.length}</span> results
                 {selectedCategory !== "All Categories" && (
                   <span>
                     {" "}
@@ -393,29 +289,41 @@ export default function ProductListing() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-700">Sort by:</span>
-                <Select defaultValue="featured">
+                <Select defaultValue="newest">
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="featured">Featured</SelectItem>
+                    <SelectItem value="newest">Newest First</SelectItem>
                     <SelectItem value="price-low">Price: Low to High</SelectItem>
                     <SelectItem value="price-high">Price: High to Low</SelectItem>
-                    <SelectItem value="newest">Newest Arrivals</SelectItem>
-                    <SelectItem value="rating">Highest Rated</SelectItem>
+                    <SelectItem value="title">Title A-Z</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
             {/* Products */}
-            {filteredProducts.length > 0 ? (
+            {loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProducts.map((product) => (
+                {[...Array(6)].map((_, i) => (
+                  <Card key={i} className="overflow-hidden border border-gray-200 h-full flex flex-col animate-pulse">
+                    <div className="pt-[100%] bg-gray-200"></div>
+                    <CardContent className="flex-1 p-4">
+                      <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded mb-2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : products.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {products.map((product) => (
                   <Card key={product.id} className="overflow-hidden border border-gray-200 h-full flex flex-col">
                     <div className="relative pt-[100%] bg-gray-100">
                       <img
-                        src={product.image || "/placeholder.svg"}
+                        src={product.images?.[0] || "/placeholder.svg?height=200&width=200"}
                         alt={product.title}
                         className="absolute inset-0 w-full h-full object-cover"
                       />
@@ -425,15 +333,20 @@ export default function ProductListing() {
                     </div>
                     <CardContent className="flex-1 p-4">
                       <div className="flex items-center mb-2">
-                        <Star className="h-4 w-4 text-yellow-400 fill-yellow-400" />
-                        <span className="text-sm text-gray-600 ml-1">{product.rating}</span>
+                        <Avatar className="h-6 w-6 mr-2">
+                          <AvatarImage src={product.seller?.avatar_url || "/placeholder.svg"} />
+                          <AvatarFallback className="text-xs">
+                            {product.seller?.full_name?.charAt(0) || "U"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm text-gray-600">{product.seller?.full_name || "Unknown Seller"}</span>
                       </div>
                       <h3 className="font-semibold text-lg mb-1 line-clamp-1">{product.title}</h3>
                       <p className="text-gray-600 text-sm mb-2 line-clamp-2">{product.description}</p>
                       <p className="text-lg font-bold text-blue-600">${product.price.toFixed(2)}</p>
                     </CardContent>
                     <CardFooter className="p-4 pt-0">
-                      <Button className="w-full bg-blue-600 hover:bg-blue-700">Add to Cart</Button>
+                      <Button className="w-full bg-blue-600 hover:bg-blue-700">Contact Seller</Button>
                     </CardFooter>
                   </Card>
                 ))}
@@ -450,8 +363,8 @@ export default function ProductListing() {
                   onClick={() => {
                     setSearchQuery("")
                     setSelectedCategory("All Categories")
-                    setPriceRange([0, 200])
-                    setConditions({ new: true, used: true })
+                    setPriceRange([0, 1000])
+                    setConditions({ New: true, Used: true })
                   }}
                 >
                   Reset All Filters

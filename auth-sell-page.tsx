@@ -30,6 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { auth } from "@/lib/supabase"
+import { productService } from "@/lib/products"
 import { useAuth } from "@/hooks/useAuth"
 
 export default function AuthSellPage() {
@@ -79,6 +80,7 @@ export default function AuthSellPage() {
     description: "",
     price: "",
     category: "",
+    condition: "New",
   })
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
 
@@ -170,18 +172,28 @@ export default function AuthSellPage() {
     setMessage(null)
 
     try {
-      // Here you would typically save to your products table
-      console.log("Product data:", productData)
-      console.log("Uploaded images:", uploadedImages)
-      console.log("User:", user)
+      await productService.createProduct({
+        title: productData.title,
+        description: productData.description,
+        price: Number.parseFloat(productData.price),
+        category: productData.category,
+        condition: productData.condition,
+        images: uploadedImages,
+      })
 
-      setMessage({ type: "success", text: "Product listed successfully!" })
+      setMessage({ type: "success", text: "Product listed successfully! It's now live on the marketplace." })
 
       // Clear form
-      setProductData({ title: "", description: "", price: "", category: "" })
+      setProductData({ title: "", description: "", price: "", category: "", condition: "New" })
       setUploadedImages([])
+
+      // Redirect to products page after 2 seconds
+      setTimeout(() => {
+        router.push("/products")
+      }, 2000)
     } catch (error) {
-      setMessage({ type: "error", text: "Failed to list product" })
+      console.error("Error creating product:", error)
+      setMessage({ type: "error", text: "Failed to list product. Please try again." })
     } finally {
       setIsLoading(false)
     }
@@ -246,14 +258,21 @@ export default function AuthSellPage() {
                 </Button>
               </Link>
               {user && (
-                <Button
-                  variant="ghost"
-                  onClick={handleSignOut}
-                  disabled={isLoading}
-                  className="text-gray-700 hover:text-gray-900"
-                >
-                  Sign Out
-                </Button>
+                <>
+                  <Link href="/profile">
+                    <Button variant="ghost" className="text-gray-700 hover:text-gray-900">
+                      Profile
+                    </Button>
+                  </Link>
+                  <Button
+                    variant="ghost"
+                    onClick={handleSignOut}
+                    disabled={isLoading}
+                    className="text-gray-700 hover:text-gray-900"
+                  >
+                    Sign Out
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -312,9 +331,14 @@ export default function AuthSellPage() {
                   <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold mb-2">You're already signed in!</h3>
                   <p className="text-gray-600 mb-6">Welcome back to MarketPlace</p>
-                  <Link href="/products">
-                    <Button className="bg-blue-600 hover:bg-blue-700">Browse Products</Button>
-                  </Link>
+                  <div className="flex gap-4 justify-center">
+                    <Link href="/products">
+                      <Button className="bg-blue-600 hover:bg-blue-700">Browse Products</Button>
+                    </Link>
+                    <Link href="/profile">
+                      <Button variant="outline">View Profile</Button>
+                    </Link>
+                  </div>
                 </CardContent>
               ) : (
                 <>
@@ -442,9 +466,14 @@ export default function AuthSellPage() {
                   <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold mb-2">You're already signed in!</h3>
                   <p className="text-gray-600 mb-6">Welcome to MarketPlace</p>
-                  <Link href="/products">
-                    <Button className="bg-blue-600 hover:bg-blue-700">Browse Products</Button>
-                  </Link>
+                  <div className="flex gap-4 justify-center">
+                    <Link href="/products">
+                      <Button className="bg-blue-600 hover:bg-blue-700">Browse Products</Button>
+                    </Link>
+                    <Link href="/profile">
+                      <Button variant="outline">View Profile</Button>
+                    </Link>
+                  </div>
                 </CardContent>
               ) : (
                 <>
@@ -655,25 +684,46 @@ export default function AuthSellPage() {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="product-category">Category</Label>
-                    <Select
-                      value={productData.category}
-                      onValueChange={(value) => setProductData({ ...productData, category: value })}
-                      required
-                      disabled={isLoading || !user}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="product-category">Category</Label>
+                      <Select
+                        value={productData.category}
+                        onValueChange={(value) => setProductData({ ...productData, category: value })}
+                        required
+                        disabled={isLoading || !user}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((category) => (
+                            <SelectItem key={category} value={category}>
+                              {category}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="product-condition">Condition</Label>
+                      <Select
+                        value={productData.condition}
+                        onValueChange={(value) => setProductData({ ...productData, condition: value })}
+                        required
+                        disabled={isLoading || !user}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select condition" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="New">New</SelectItem>
+                          <SelectItem value="Used">Used</SelectItem>
+                          <SelectItem value="Refurbished">Refurbished</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
