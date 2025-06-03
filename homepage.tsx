@@ -1,6 +1,6 @@
 "use client"
 
-import { Search, ShoppingCart, User, Smartphone, Shirt, Home, Baby } from "lucide-react"
+import { Search, ShoppingCart, User, Smartphone, Shirt, Home, Baby, Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -73,11 +73,21 @@ export default function Component() {
                   Browse Products
                 </Button>
               </Link>
-              <Button variant="ghost" className="text-gray-700 hover:text-gray-900">
-                <User className="h-4 w-4 mr-2" />
-                Login
-              </Button>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">Sign Up</Button>
+              <Link href="/auth?tab=sell">
+                <Button variant="ghost" className="text-gray-700 hover:text-gray-900 hidden sm:flex items-center">
+                  <Tag className="h-4 w-4 mr-2" />
+                  Sell
+                </Button>
+              </Link>
+              <Link href="/auth">
+                <Button variant="ghost" className="text-gray-700 hover:text-gray-900">
+                  <User className="h-4 w-4 mr-2" />
+                  Login
+                </Button>
+              </Link>
+              <Link href="/auth?tab=signup">
+                <Button className="bg-blue-600 hover:bg-blue-700 text-white">Sign Up</Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -170,8 +180,30 @@ export default function Component() {
         </div>
       </section>
 
+      {/* Sell Your Products CTA */}
+      <section className="bg-gray-50 py-16 border-t border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-gradient-to-r from-blue-600 to-purple-700 rounded-2xl p-8 md:p-12 shadow-lg">
+            <div className="md:flex items-center justify-between">
+              <div className="mb-6 md:mb-0 md:mr-8">
+                <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Ready to sell your products?</h2>
+                <p className="text-blue-100 text-lg">
+                  Join thousands of sellers and reach millions of buyers worldwide.
+                </p>
+              </div>
+              <Link href="/auth?tab=sell">
+                <Button className="w-full md:w-auto bg-white hover:bg-gray-100 text-blue-600 font-semibold py-3 px-6 text-lg">
+                  <Tag className="mr-2 h-5 w-5" />
+                  Start Selling
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
+      <footer className="bg-gray-900 text-white py-12 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="flex items-center justify-center mb-4">
