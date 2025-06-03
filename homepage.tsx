@@ -4,6 +4,7 @@ import { Search, ShoppingCart, User, Smartphone, Shirt, Home, Baby } from "lucid
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
+import Link from "next/link"
 
 export default function Component() {
   const categories = [
@@ -12,24 +13,28 @@ export default function Component() {
       name: "Electronics",
       icon: Smartphone,
       description: "Latest gadgets and tech",
+      slug: "electronics",
     },
     {
       id: 2,
       name: "Fashion",
       icon: Shirt,
       description: "Clothing and accessories",
+      slug: "fashion",
     },
     {
       id: 3,
       name: "Home",
       icon: Home,
       description: "Home and garden essentials",
+      slug: "home",
     },
     {
       id: 4,
       name: "Toys",
       icon: Baby,
       description: "Fun for all ages",
+      slug: "toys",
     },
   ]
 
@@ -41,10 +46,10 @@ export default function Component() {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div className="flex-shrink-0">
-              <div className="flex items-center">
+              <Link href="/" className="flex items-center">
                 <ShoppingCart className="h-8 w-8 text-blue-600" />
                 <span className="ml-2 text-2xl font-bold text-gray-900">MarketPlace</span>
-              </div>
+              </Link>
             </div>
 
             {/* Centered Search Bar */}
@@ -61,8 +66,13 @@ export default function Component() {
               </div>
             </div>
 
-            {/* Login/Signup Buttons */}
+            {/* Navigation Links */}
             <div className="flex items-center space-x-4">
+              <Link href="/products">
+                <Button variant="ghost" className="text-gray-700 hover:text-gray-900">
+                  Browse Products
+                </Button>
+              </Link>
               <Button variant="ghost" className="text-gray-700 hover:text-gray-900">
                 <User className="h-4 w-4 mr-2" />
                 Login
@@ -110,23 +120,21 @@ export default function Component() {
             {categories.map((category) => {
               const IconComponent = category.icon
               return (
-                <Card
-                  key={category.id}
-                  className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-gray-200 hover:border-blue-300"
-                  onClick={() => console.log(`Clicked on ${category.name}`)}
-                >
-                  <CardContent className="p-8 text-center">
-                    <div className="mb-4 flex justify-center">
-                      <div className="p-4 bg-blue-100 rounded-full group-hover:bg-blue-200 transition-colors duration-300">
-                        <IconComponent className="h-8 w-8 text-blue-600" />
+                <Link key={category.id} href={`/products?category=${category.name}`}>
+                  <Card className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-gray-200 hover:border-blue-300">
+                    <CardContent className="p-8 text-center">
+                      <div className="mb-4 flex justify-center">
+                        <div className="p-4 bg-blue-100 rounded-full group-hover:bg-blue-200 transition-colors duration-300">
+                          <IconComponent className="h-8 w-8 text-blue-600" />
+                        </div>
                       </div>
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors duration-300">
-                      {category.name}
-                    </h3>
-                    <p className="text-gray-600 text-sm">{category.description}</p>
-                  </CardContent>
-                </Card>
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors duration-300">
+                        {category.name}
+                      </h3>
+                      <p className="text-gray-600 text-sm">{category.description}</p>
+                    </CardContent>
+                  </Card>
+                </Link>
               )
             })}
           </div>
