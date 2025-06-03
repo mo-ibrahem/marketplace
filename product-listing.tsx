@@ -320,35 +320,39 @@ export default function ProductListing() {
             ) : products.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {products.map((product) => (
-                  <Card key={product.id} className="overflow-hidden border border-gray-200 h-full flex flex-col">
-                    <div className="relative pt-[100%] bg-gray-100">
-                      <img
-                        src={product.images?.[0] || "/placeholder.svg?height=200&width=200"}
-                        alt={product.title}
-                        className="absolute inset-0 w-full h-full object-cover"
-                      />
-                      <div className="absolute top-2 right-2 bg-white px-2 py-1 rounded text-xs font-medium">
-                        {product.condition}
+                  <Link key={product.id} href={`/products/${product.id}`}>
+                    <Card className="overflow-hidden border border-gray-200 h-full flex flex-col hover:shadow-lg transition-shadow cursor-pointer">
+                      <div className="relative pt-[100%] bg-gray-100">
+                        <img
+                          src={product.images?.[0] || "/placeholder.svg?height=200&width=200"}
+                          alt={product.title}
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
+                        <div className="absolute top-2 right-2 bg-white px-2 py-1 rounded text-xs font-medium">
+                          {product.condition}
+                        </div>
                       </div>
-                    </div>
-                    <CardContent className="flex-1 p-4">
-                      <div className="flex items-center mb-2">
-                        <Avatar className="h-6 w-6 mr-2">
-                          <AvatarImage src={product.seller?.avatar_url || "/placeholder.svg"} />
-                          <AvatarFallback className="text-xs">
-                            {product.seller?.full_name?.charAt(0) || "U"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm text-gray-600">{product.seller?.full_name || "Unknown Seller"}</span>
-                      </div>
-                      <h3 className="font-semibold text-lg mb-1 line-clamp-1">{product.title}</h3>
-                      <p className="text-gray-600 text-sm mb-2 line-clamp-2">{product.description}</p>
-                      <p className="text-lg font-bold text-blue-600">${product.price.toFixed(2)}</p>
-                    </CardContent>
-                    <CardFooter className="p-4 pt-0">
-                      <Button className="w-full bg-blue-600 hover:bg-blue-700">Contact Seller</Button>
-                    </CardFooter>
-                  </Card>
+                      <CardContent className="flex-1 p-4">
+                        <div className="flex items-center mb-2">
+                          <Avatar className="h-6 w-6 mr-2">
+                            <AvatarImage src={product.seller?.avatar_url || "/placeholder.svg"} />
+                            <AvatarFallback className="text-xs">
+                              {product.seller?.full_name?.charAt(0) || "U"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm text-gray-600">{product.seller?.full_name || "Unknown Seller"}</span>
+                        </div>
+                        <h3 className="font-semibold text-lg mb-1 line-clamp-1">{product.title}</h3>
+                        <p className="text-gray-600 text-sm mb-2 line-clamp-2">{product.description}</p>
+                        <p className="text-lg font-bold text-blue-600">${product.price.toFixed(2)}</p>
+                      </CardContent>
+                      <CardFooter className="p-4 pt-0">
+                        <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={(e) => e.preventDefault()}>
+                          View Details
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  </Link>
                 ))}
               </div>
             ) : (

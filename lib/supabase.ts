@@ -8,46 +8,73 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 // Auth helper functions
 export const auth = {
   signUp: async (email: string, password: string, name: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: name,
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name,
+          },
         },
-      },
-    })
-    return { data, error }
+      })
+      return { data, error }
+    } catch (error) {
+      console.error("Sign up error:", error)
+      return { data: null, error }
+    }
   },
 
   signIn: async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    return { data, error }
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      return { data, error }
+    } catch (error) {
+      console.error("Sign in error:", error)
+      return { data: null, error }
+    }
   },
 
   signInWithGoogle: async () => {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    })
-    return { data, error }
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+      return { data, error }
+    } catch (error) {
+      console.error("Google sign in error:", error)
+      return { data: null, error }
+    }
   },
 
   signOut: async () => {
-    const { error } = await supabase.auth.signOut()
-    return { error }
+    try {
+      const { error } = await supabase.auth.signOut()
+      return { error }
+    } catch (error) {
+      console.error("Sign out error:", error)
+      return { error }
+    }
   },
 
   getCurrentUser: async () => {
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser()
-    return { user, error }
+    try {
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser()
+      return { user, error }
+    } catch (error) {
+      console.error("Get current user error:", error)
+      return { user: null, error }
+    }
   },
+
+  supabase, // Export supabase client for direct access when needed
 }

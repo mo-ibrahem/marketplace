@@ -18,6 +18,7 @@ import {
   Lock,
   Save,
   X,
+  Heart,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,6 +39,7 @@ export default function ProfilePage() {
 
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [userProducts, setUserProducts] = useState<Product[]>([])
+  const [wishlistProducts, setWishlistProducts] = useState<Product[]>([])
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
@@ -96,6 +98,16 @@ export default function ProfilePage() {
       // Load user's products
       const products = await productService.getProductsBySeller(user.id)
       setUserProducts(products)
+
+      // Load user's wishlist
+      try {
+        const wishlist = await productService.getWishlist()
+        setWishlistProducts(wishlist)
+      } catch (error) {
+        console.error("Error loading wishlist:", error)
+        // Don't fail the entire load if wishlist fails
+        setWishlistProducts([])
+      }
     } catch (error) {
       console.error("Error loading user data:", error)
       setMessage({ type: "error", text: "Failed to load profile data" })
@@ -176,6 +188,32 @@ export default function ProfilePage() {
     }
   }
 
+  const handleRemoveFromWishlist = async (productId: string) => {
+    try {
+      setIsLoading(true)
+      console.log("Removing product from wishlist:", productId)
+
+      await productService.removeFromWishlist(productId)
+      setMessage({ type: "success", text: "Product removed from wishlist!" })
+
+      // Update wishlist state
+      setWishlistProducts(wishlistProducts.filter((product) => product.id !== productId))
+    } catch (error) {
+      console.error("Error removing from wishlist:", error)
+
+      let errorMessage = "Failed to remove from wishlist"
+      if (error instanceof Error) {
+        errorMessage = error.message
+      } else if (typeof error === "string") {
+        errorMessage = error
+      }
+
+      setMessage({ type: "error", text: errorMessage })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleSignOut = async () => {
     try {
       await auth.signOut()
@@ -248,6 +286,10 @@ export default function ProfilePage() {
                   <Package className="h-3 w-3 mr-1" />
                   {userProducts.length} Products Listed
                 </Badge>
+                <Badge variant="secondary">
+                  <Heart className="h-3 w-3 mr-1" />
+                  {wishlistProducts.length} Wishlisted
+                </Badge>
               </div>
             </div>
           </div>
@@ -265,7 +307,7 @@ export default function ProfilePage() {
 
         {/* Tabs */}
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="profile" className="flex items-center gap-2">
               <User className="h-4 w-4" />
               Profile
@@ -273,6 +315,10 @@ export default function ProfilePage() {
             <TabsTrigger value="products" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
               My Products
+            </TabsTrigger>
+            <TabsTrigger value="wishlist" className="flex items-center gap-2">
+              <Heart className="h-4 w-4" />
+              Wishlist
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
@@ -456,10 +502,12 @@ export default function ProfilePage() {
                           <p className="text-gray-600 text-sm mb-2 line-clamp-2">{product.description}</p>
                           <p className="text-lg font-bold text-blue-600 mb-3">${product.price.toFixed(2)}</p>
                           <div className="flex space-x-2">
-                            <Button variant="outline" size="sm" className="flex-1">
-                              <Eye className="h-4 w-4 mr-1" />
-                              View
-                            </Button>
+                            <Link href={`/products/${product.id}`} className="flex-1">
+                              <Button variant="outline" size="sm" className="w-full">
+                                <Eye className="h-4 w-4 mr-1" />
+                                View
+                              </Button>
+                            </Link>
                             <Button variant="outline" size="sm" className="flex-1">
                               <Edit className="h-4 w-4 mr-1" />
                               Edit
@@ -487,6 +535,97 @@ export default function ProfilePage() {
                       <Button>
                         <Package className="h-4 w-4 mr-2" />
                         List Your First Product
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Wishlist Tab */}
+          <TabsContent value="wishlist">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>My Wishlist</CardTitle>
+                    <CardDescription>Products you've saved for later</CardDescription>
+                  </div>
+                  <Link href="/products">
+                    <Button variant="outline">
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      Browse Products
+                    </Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {wishlistProducts.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {wishlistProducts.map((product) => (
+                      <Card key={product.id} className="overflow-hidden">
+                        <div className="relative pt-[60%] bg-gray-100">
+                          <img
+                            src={product.images?.[0] || "/placeholder.svg?height=150&width=200"}
+                            alt={product.title}
+                            className="absolute inset-0 w-full h-full object-cover"
+                          />
+                          <div className="absolute top-2 right-2">
+                            <Badge variant={product.condition === "New" ? "default" : "secondary"}>
+                              {product.condition}
+                            </Badge>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="absolute top-2 left-2 bg-white/80 hover:bg-white"
+                            onClick={() => handleRemoveFromWishlist(product.id)}
+                          >
+                            <Heart className="h-4 w-4 fill-red-500 text-red-500" />
+                          </Button>
+                        </div>
+                        <CardContent className="p-4">
+                          <div className="flex items-center mb-2">
+                            <Avatar className="h-6 w-6 mr-2">
+                              <AvatarImage src={product.seller?.avatar_url || "/placeholder.svg"} />
+                              <AvatarFallback className="text-xs">
+                                {product.seller?.full_name?.charAt(0) || "U"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm text-gray-600">
+                              {product.seller?.full_name || "Unknown Seller"}
+                            </span>
+                          </div>
+                          <h3 className="font-semibold text-lg mb-1 line-clamp-1">{product.title}</h3>
+                          <p className="text-gray-600 text-sm mb-2 line-clamp-2">{product.description}</p>
+                          <p className="text-lg font-bold text-blue-600 mb-3">${product.price.toFixed(2)}</p>
+                          <div className="flex space-x-2">
+                            <Link href={`/products/${product.id}`} className="flex-1">
+                              <Button className="w-full bg-blue-600 hover:bg-blue-700">View Details</Button>
+                            </Link>
+                            <Button
+                              variant="outline"
+                              onClick={() => handleRemoveFromWishlist(product.id)}
+                              disabled={isLoading}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Heart className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Your wishlist is empty</h3>
+                    <p className="text-gray-500 mb-4">Save products you're interested in by clicking the heart icon</p>
+                    <Link href="/products">
+                      <Button>
+                        <ShoppingCart className="h-4 w-4 mr-2" />
+                        Browse Products
                       </Button>
                     </Link>
                   </div>
