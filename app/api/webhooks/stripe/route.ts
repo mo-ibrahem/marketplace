@@ -1,14 +1,32 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { stripe } from "@/lib/stripe"
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+// Handle missing Stripe configuration
+let stripe: any = null
+try {
+  const { stripe: stripeClient } = require("@/lib/stripe")
+  stripe = stripeClient
+} catch (error) {
+  console.warn("Stripe not configured for webhooks")
+}
+
+const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if Stripe is configured
+    if (!stripe || !webhookSecret) {
+      console.warn("Stripe webhook not configured")
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 500 })
+    }
+
     const body = await request.text()
-    const signature = request.headers.get("stripe-signature")!
+    const signature = request.headers.get("stripe-signature")
+
+    if (!signature) {
+      return NextResponse.json({ error: "No signature" }, { status: 400 })
+    }
 
     let event
     try {

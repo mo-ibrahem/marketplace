@@ -1,10 +1,23 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { stripeService } from "@/lib/stripe"
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 
+// Add error handling for missing Stripe
+let stripeService: any = null
+try {
+  const { stripeService: stripe } = require("@/lib/stripe")
+  stripeService = stripe
+} catch (error) {
+  console.warn("Stripe not configured:", error)
+}
+
 export async function POST(request: NextRequest) {
   try {
+    // Check if Stripe is configured
+    if (!stripeService) {
+      return NextResponse.json({ error: "Payment system not configured" }, { status: 500 })
+    }
+
     const cookieStore = cookies()
     const supabaseClient = createRouteHandlerClient({ cookies: () => cookieStore })
 

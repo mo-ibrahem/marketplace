@@ -1,12 +1,12 @@
 import Stripe from "stripe"
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("STRIPE_SECRET_KEY is not set")
-}
+const stripeKey = process.env.STRIPE_SECRET_KEY
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2024-06-20",
-})
+export const stripe = stripeKey
+  ? new Stripe(stripeKey, {
+      apiVersion: "2024-06-20",
+    })
+  : null
 
 export interface PaymentIntentData {
   amount: number
@@ -20,6 +20,7 @@ export interface PaymentIntentData {
 export const stripeService = {
   // Create payment intent for Egyptian customers
   createPaymentIntent: async (data: PaymentIntentData) => {
+    if (!stripe) throw new Error("Stripe not configured")
     try {
       const paymentIntent = await stripe.paymentIntents.create({
         amount: Math.round(data.amount * 100), // Convert to cents/piastres
@@ -48,6 +49,7 @@ export const stripeService = {
 
   // Get payment intent
   getPaymentIntent: async (paymentIntentId: string) => {
+    if (!stripe) throw new Error("Stripe not configured")
     try {
       return await stripe.paymentIntents.retrieve(paymentIntentId)
     } catch (error) {
@@ -58,6 +60,7 @@ export const stripeService = {
 
   // Create customer for repeat purchases
   createCustomer: async (email: string, name?: string) => {
+    if (!stripe) throw new Error("Stripe not configured")
     try {
       return await stripe.customers.create({
         email,
