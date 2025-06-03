@@ -5,8 +5,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
+import { useAuth } from "@/hooks/useAuth"
+import { auth } from "@/lib/supabase"
 
 export default function Component() {
+  const { user, loading } = useAuth()
+
   const categories = [
     {
       id: 1,
@@ -37,6 +41,10 @@ export default function Component() {
       slug: "toys",
     },
   ]
+
+  const handleSignOut = async () => {
+    await auth.signOut()
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -73,21 +81,53 @@ export default function Component() {
                   Browse Products
                 </Button>
               </Link>
-              <Link href="/auth?tab=sell">
-                <Button variant="ghost" className="text-gray-700 hover:text-gray-900 hidden sm:flex items-center">
-                  <Tag className="h-4 w-4 mr-2" />
-                  Sell
-                </Button>
-              </Link>
-              <Link href="/auth">
-                <Button variant="ghost" className="text-gray-700 hover:text-gray-900">
-                  <User className="h-4 w-4 mr-2" />
-                  Login
-                </Button>
-              </Link>
-              <Link href="/auth?tab=signup">
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white">Sign Up</Button>
-              </Link>
+
+              {!loading && (
+                <>
+                  {user ? (
+                    <>
+                      <Link href="/auth?tab=sell">
+                        <Button
+                          variant="ghost"
+                          className="text-gray-700 hover:text-gray-900 hidden sm:flex items-center"
+                        >
+                          <Tag className="h-4 w-4 mr-2" />
+                          Sell
+                        </Button>
+                      </Link>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-gray-600 hidden md:block">
+                          Hi, {user.user_metadata?.full_name || user.email?.split("@")[0]}
+                        </span>
+                        <Button variant="ghost" onClick={handleSignOut} className="text-gray-700 hover:text-gray-900">
+                          Sign Out
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <Link href="/auth?tab=sell">
+                        <Button
+                          variant="ghost"
+                          className="text-gray-700 hover:text-gray-900 hidden sm:flex items-center"
+                        >
+                          <Tag className="h-4 w-4 mr-2" />
+                          Sell
+                        </Button>
+                      </Link>
+                      <Link href="/auth">
+                        <Button variant="ghost" className="text-gray-700 hover:text-gray-900">
+                          <User className="h-4 w-4 mr-2" />
+                          Login
+                        </Button>
+                      </Link>
+                      <Link href="/auth?tab=signup">
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white">Sign Up</Button>
+                      </Link>
+                    </>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -97,7 +137,9 @@ export default function Component() {
       <section className="bg-gradient-to-r from-blue-600 to-purple-700 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold mb-6">Welcome to MarketPlace</h1>
+            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              {user ? `Welcome back, ${user.user_metadata?.full_name || "there"}!` : "Welcome to MarketPlace"}
+            </h1>
             <p className="text-xl md:text-2xl mb-8 text-blue-100">
               Discover amazing deals on millions of items from trusted sellers worldwide
             </p>
@@ -186,15 +228,19 @@ export default function Component() {
           <div className="bg-gradient-to-r from-blue-600 to-purple-700 rounded-2xl p-8 md:p-12 shadow-lg">
             <div className="md:flex items-center justify-between">
               <div className="mb-6 md:mb-0 md:mr-8">
-                <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Ready to sell your products?</h2>
+                <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+                  {user ? "Ready to sell more products?" : "Ready to sell your products?"}
+                </h2>
                 <p className="text-blue-100 text-lg">
-                  Join thousands of sellers and reach millions of buyers worldwide.
+                  {user
+                    ? "List another item and reach millions of buyers worldwide."
+                    : "Join thousands of sellers and reach millions of buyers worldwide."}
                 </p>
               </div>
               <Link href="/auth?tab=sell">
                 <Button className="w-full md:w-auto bg-white hover:bg-gray-100 text-blue-600 font-semibold py-3 px-6 text-lg">
                   <Tag className="mr-2 h-5 w-5" />
-                  Start Selling
+                  {user ? "List Product" : "Start Selling"}
                 </Button>
               </Link>
             </div>
