@@ -12,28 +12,45 @@ try {
 }
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+const isDevelopment = process.env.NODE_ENV === 'development'
 
 export async function POST(request: NextRequest) {
   try {
     // Check if Stripe is configured
     if (!stripe || !webhookSecret) {
-      console.warn("Stripe webhook not configured")
-      return NextResponse.json({ error: "Webhook not configured" }, { status: 500 })
+      const error = "Stripe or webhook secret not configured"
+      console.warn(error, { 
+        stripeConfigured: !!stripe, 
+        webhookSecretConfigured: !!webhookSecret,
+        nodeEnv: process.env.NODE_ENV 
+      })
+      return NextResponse.json({ error }, { status: 500 })
     }
 
     const body = await request.text()
     const signature = request.headers.get("stripe-signature")
 
     if (!signature) {
+      console.warn("No Stripe signature found in webhook request")
       return NextResponse.json({ error: "No signature" }, { status: 400 })
     }
 
     let event
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
-    } catch (err) {
+      if (isDevelopment) {
+        console.log("Webhook event received:", {
+          type: event.type,
+          id: event.id,
+          object: event.data.object.id
+        })
+      }
+    } catch (err: any) {
       console.error("Webhook signature verification failed:", err)
-      return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
+      return NextResponse.json({ 
+        error: "Invalid signature",
+        details: isDevelopment ? err.message : undefined 
+      }, { status: 400 })
     }
 
     const cookieStore = cookies()
@@ -42,6 +59,9 @@ export async function POST(request: NextRequest) {
     switch (event.type) {
       case "payment_intent.succeeded": {
         const paymentIntent = event.data.object
+        if (isDevelopment) {
+          console.log("Processing payment_intent.succeeded:", paymentIntent.id)
+        }
 
         // Update payment status
         const { error: paymentError } = await supabase
@@ -55,15 +75,26 @@ export async function POST(request: NextRequest) {
 
         if (paymentError) {
           console.error("Error updating payment:", paymentError)
+          if (isDevelopment) {
+            return NextResponse.json({ error: "Payment update failed", details: paymentError }, { status: 500 })
+          }
           break
         }
 
         // Get payment details to create order
-        const { data: payment } = await supabase
+        const { data: payment, error: fetchError } = await supabase
           .from("payments")
           .select("*")
           .eq("stripe_payment_intent_id", paymentIntent.id)
           .single()
+
+        if (fetchError) {
+          console.error("Error fetching payment:", fetchError)
+          if (isDevelopment) {
+            return NextResponse.json({ error: "Payment fetch failed", details: fetchError }, { status: 500 })
+          }
+          break
+        }
 
         if (payment) {
           // Create order
@@ -77,10 +108,20 @@ export async function POST(request: NextRequest) {
 
           if (orderError) {
             console.error("Error creating order:", orderError)
+            if (isDevelopment) {
+              return NextResponse.json({ error: "Order creation failed", details: orderError }, { status: 500 })
+            }
           }
 
           // Mark product as sold
-          await supabase.from("products").update({ status: "sold" }).eq("id", payment.product_id)
+          const { error: productError } = await supabase
+            .from("products")
+            .update({ status: "sold" })
+            .eq("id", payment.product_id)
+
+          if (productError && isDevelopment) {
+            console.error("Error updating product status:", productError)
+          }
         }
 
         break
@@ -88,9 +129,20 @@ export async function POST(request: NextRequest) {
 
       case "payment_intent.payment_failed": {
         const paymentIntent = event.data.object
+        if (isDevelopment) {
+          console.log("Processing payment_intent.payment_failed:", paymentIntent.id)
+        }
 
         // Update payment status to failed
-        await supabase.from("payments").update({ status: "failed" }).eq("stripe_payment_intent_id", paymentIntent.id)
+        const { error: updateError } = await supabase
+          .from("payments")
+          .update({ status: "failed" })
+          .eq("stripe_payment_intent_id", paymentIntent.id)
+
+        if (updateError && isDevelopment) {
+          console.error("Error updating payment status to failed:", updateError)
+          return NextResponse.json({ error: "Payment status update failed", details: updateError }, { status: 500 })
+        }
 
         break
       }
@@ -100,8 +152,11 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ received: true })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Webhook error:", error)
-    return NextResponse.json({ error: "Webhook handler failed" }, { status: 500 })
+    return NextResponse.json({ 
+      error: "Webhook handler failed", 
+      details: isDevelopment ? error.message : undefined 
+    }, { status: 500 })
   }
 }

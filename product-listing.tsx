@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import { productService, type Product } from "@/lib/products"
 import { useAuth } from "@/hooks/useAuth"
+import Image from "next/image"
 
 // Available categories
 const categories = [
@@ -174,8 +175,12 @@ export default function ProductListing() {
             {/* Logo */}
             <div className="flex-shrink-0">
               <Link href="/" className="flex items-center">
-                <ShoppingCart className="h-8 w-8 text-blue-600" />
-                <span className="ml-2 text-2xl font-bold text-gray-900">MarketPlace</span>
+                 <Image 
+                        src="/egbay.svg" // Path from the public directory
+                        alt="EgyBay Logo" 
+                        width={120} // Example width, adjust as needed
+                        height={40} // Example height, adjust as needed
+                      />
               </Link>
             </div>
 
@@ -381,16 +386,20 @@ export default function ProductListing() {
 
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-12 mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <div className="flex items-center justify-center mb-4">
-              <ShoppingCart className="h-8 w-8 text-blue-400" />
-              <span className="ml-2 text-2xl font-bold">MarketPlace</span>
-            </div>
-            <p className="text-gray-400">© 2024 MarketPlace. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center">
+                  <div className="flex items-center justify-center mb-4">
+                     <Image 
+                        src="/egbay.svg" // Path from the public directory
+                        alt="EgyBay Logo" 
+                        width={120} // Example width, adjust as needed
+                        height={40} // Example height, adjust as needed
+                      />
+                  </div>
+                  <p className="text-gray-400">© 2025 Egbay. All rights reserved.</p>
+                </div>
+              </div>
+            </footer>
     </div>
   )
 }

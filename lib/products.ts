@@ -1,391 +1,332 @@
 import { supabase } from "./supabase"
 
 export interface Product {
-  id: string
-  title: string
-  description: string
-  price: number
-  category: string
-  condition: string
-  images: string[]
-  seller_id: string
-  status: string
-  created_at: string
-  updated_at: string
-  seller?: {
-    full_name: string
-    avatar_url?: string
-  }
-  isWishlisted?: boolean
+  id: string
+  title: string
+  description: string
+  price: number
+  category: string
+  condition: string
+  images: string[]
+  seller_id: string
+  status: string
+  created_at: string
+  updated_at: string
+  seller?: {
+    full_name: string
+    avatar_url?: string
+  }
+  isWishlisted?: boolean
 }
 
 export interface UserProfile {
-  id: string
-  full_name: string
-  avatar_url?: string
-  phone?: string
-  address?: string
-  created_at: string
-  updated_at: string
+  id: string
+  full_name: string
+  avatar_url?: string
+  phone?: string
+  address?: string
+  created_at: string
+  updated_at: string
 }
 
 export const productService = {
-  // Create a new product
-  createProduct: async (productData: {
-    title: string
-    description: string
-    price: number
-    category: string
-    condition: string
-    images: string[]
-  }) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) throw new Error("User not authenticated")
+  // Create a new product
+  createProduct: async (productData: {
+    title: string
+    description: string
+    price: number
+    category: string
+    condition: string
+    images: string[]
+  }) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) throw new Error("User not authenticated")
 
-    const { data, error } = await supabase
-      .from("products")
-      .insert([
-        {
-          ...productData,
-          seller_id: user.id,
-          status: "active",
-        },
-      ])
-      .select()
-      .single()
+    const { data, error } = await supabase
+      .from("products")
+      .insert([
+        {
+          ...productData,
+          seller_id: user.id,
+          status: "active",
+        },
+      ])
+      .select()
+      .single()
 
-    if (error) throw error
-    return data
-  },
+    if (error) throw error
+    return data
+  },
 
-  // Get all active products with seller info
-  getProducts: async (filters?: {
-    category?: string
-    search?: string
-    minPrice?: number
-    maxPrice?: number
-    condition?: string[]
-  }) => {
-    // First, query products
-    let query = supabase.from("products").select("*").eq("status", "active").order("created_at", { ascending: false })
+  // Get all active products with seller info (REVERTED TO WORKING VERSION)
+  getProducts: async (filters?: {
+    category?: string
+    search?: string
+    minPrice?: number
+    maxPrice?: number
+    condition?: string[]
+  }) => {
+    // First, query products
+    let query = supabase.from("products").select("*").eq("status", "active").order("created_at", { ascending: false })
 
-    if (filters?.category && filters.category !== "All Categories") {
-      query = query.eq("category", filters.category)
-    }
+    if (filters?.category && filters.category !== "All Categories") {
+      query = query.ilike("category", filters.category)
+    }
+    if (filters?.search) {
+      query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
+    }
+    if (filters?.minPrice !== undefined) {
+      query = query.gte("price", filters.minPrice)
+    }
+    if (filters?.maxPrice !== undefined) {
+      query = query.lte("price", filters.maxPrice)
+    }
+    if (filters?.condition && filters.condition.length > 0) {
+      query = query.in("condition", filters.condition)
+    }
 
-    if (filters?.search) {
-      query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`)
-    }
+    const { data: products, error } = await query
 
-    if (filters?.minPrice !== undefined) {
-      query = query.gte("price", filters.minPrice)
-    }
+    if (error) throw error
 
-    if (filters?.maxPrice !== undefined) {
-      query = query.lte("price", filters.maxPrice)
-    }
+    // If we have products, fetch the seller profiles
+    if (products && products.length > 0) {
+      const sellerIds = [...new Set(products.map((product) => product.seller_id))]
 
-    if (filters?.condition && filters.condition.length > 0) {
-      query = query.in("condition", filters.condition)
-    }
+      const { data: profiles, error: profilesError } = await supabase
+        .from("user_profiles")
+        .select("id, full_name, avatar_url")
+        .in("id", sellerIds)
 
-    const { data: products, error } = await query
+      if (profilesError) throw profilesError
 
-    if (error) throw error
+      const sellerProfiles = profiles
+        ? profiles.reduce(
+            (map, profile) => {
+              map[profile.id] = profile
+            	return map
+            },
+          	{} as Record<string, { id: string; full_name: string; avatar_url?: string }>,
+        	)
+        : {}
 
-    // If we have products, fetch the seller profiles
-    if (products && products.length > 0) {
-      // Get unique seller IDs
-      const sellerIds = [...new Set(products.map((product) => product.seller_id))]
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-      // Fetch profiles for these sellers
-      const { data: profiles, error: profilesError } = await supabase
-        .from("user_profiles")
-        .select("id, full_name, avatar_url")
-        .in("id", sellerIds)
+      let wishlistedProductIds: string[] = []
+      if (user) {
+        try {
+          const { data: wishlistItems } = await supabase.from("wishlists").select("product_id").eq("user_id", user.id)
+          wishlistedProductIds = wishlistItems?.map((item) => item.product_id) || []
+        } catch (error) {
+          console.warn("Could not fetch wishlist items:", error)
+        }
+      }
 
-      if (profilesError) throw profilesError
+      const productsWithSellers = products.map((product) => ({
+        ...product,
+        seller: sellerProfiles[product.seller_id] || { full_name: "Unknown Seller" },
+        isWishlisted: wishlistedProductIds.includes(product.id),
+      }))
 
-      // Create a map of seller profiles by ID for quick lookup
-      const sellerProfiles = profiles
-        ? profiles.reduce(
-            (map, profile) => {
-              map[profile.id] = profile
-              return map
-            },
-            {} as Record<string, { id: string; full_name: string; avatar_url?: string }>,
-          )
-        : {}
+      return productsWithSellers as Product[]
+    }
 
-      // Check if products are in user's wishlist
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+    return products as Product[]
+  },
 
-      let wishlistedProductIds: string[] = []
-      if (user) {
-        try {
-          const { data: wishlistItems } = await supabase.from("wishlists").select("product_id").eq("user_id", user.id)
-          wishlistedProductIds = wishlistItems?.map((item) => item.product_id) || []
-        } catch (error) {
-          console.warn("Could not fetch wishlist items:", error)
-        }
-      }
+  // Get product by ID
+  getProductById: async (productId: string) => {
+    const { data: product, error } = await supabase.from("products").select("*").eq("id", productId).single()
 
-      // Add seller info to each product
-      const productsWithSellers = products.map((product) => ({
-        ...product,
-        seller: sellerProfiles[product.seller_id] || { full_name: "Unknown Seller" },
-        isWishlisted: wishlistedProductIds.includes(product.id),
-      }))
+    if (error) throw error
 
-      return productsWithSellers as Product[]
-    }
+    if (product) {
+      const { data: sellerProfile, error: profileError } = await supabase
+        .from("user_profiles")
+        .select("id, full_name, avatar_url")
+        .eq("id", product.seller_id)
+        .single()
 
-    return products as Product[]
-  },
+      if (profileError && profileError.code !== "PGRST116") throw profileError
 
-  // Get product by ID
-  getProductById: async (productId: string) => {
-    const { data: product, error } = await supabase.from("products").select("*").eq("id", productId).single()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-    if (error) throw error
+      let isWishlisted = false
+      if (user) {
+        try {
+          const { data: wishlistItem } = await supabase
+            .from("wishlists")
+            .select("id")
+          	.eq("user_id", user.id)
+          	.eq("product_id", productId)
+          	.maybeSingle()
+        	isWishlisted = !!wishlistItem
+        } catch (error) {
+          console.warn("Error in wishlist check:", error)
+        }
+      }
 
-    if (product) {
-      // Get seller profile
-      const { data: sellerProfile, error: profileError } = await supabase
-        .from("user_profiles")
-        .select("id, full_name, avatar_url")
-        .eq("id", product.seller_id)
-        .single()
+      return {
+        ...product,
+        seller: sellerProfile || { full_name: "Unknown Seller" },
+        isWishlisted,
+      } as Product
+    }
 
-      if (profileError && profileError.code !== "PGRST116") throw profileError
+    return product as Product
+  },
 
-      // Check if product is in user's wishlist
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+  // Get products by seller
+  getProductsBySeller: async (sellerId: string) => {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("seller_id", sellerId)
+      .order("created_at", { ascending: false })
 
-      let isWishlisted = false
-      if (user) {
-        try {
-          const { data: wishlistItem, error: wishlistError } = await supabase
-            .from("wishlists")
-            .select("id")
-            .eq("user_id", user.id)
-            .eq("product_id", productId)
-            .maybeSingle()
+    if (error) throw error
+    return data as Product[]
+  },
 
-          if (wishlistError) {
-            console.warn("Error checking wishlist status:", wishlistError)
-          } else {
-            isWishlisted = !!wishlistItem
-          }
-        } catch (error) {
-          console.warn("Error in wishlist check:", error)
-          // Don't throw here, just log and continue with isWishlisted = false
-        }
-      }
+  // Update product
+  updateProduct: async (productId: string, updates: Partial<Product>) => {
+    const { data, error } = await supabase
+      .from("products")
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq("id", productId)
+      .select()
+      .single()
 
-      return {
-        ...product,
-        seller: sellerProfile || { full_name: "Unknown Seller" },
-        isWishlisted,
-      } as Product
-    }
+    if (error) throw error
+    return data
+  },
 
-    return product as Product
-  },
+  // Delete product
+  deleteProduct: async (productId: string) => {
+    const { error } = await supabase.from("products").delete().eq("id", productId)
+    if (error) throw error
+  },
 
-  // Get products by seller
-  getProductsBySeller: async (sellerId: string) => {
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .eq("seller_id", sellerId)
-      .order("created_at", { ascending: false })
+  // Add product to wishlist
+  addToWishlist: async (productId: string) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) throw new Error("User not authenticated")
 
-    if (error) throw error
-    return data as Product[]
-  },
+    const { data, error } = await supabase
+      .from("wishlists")
+      .insert([{ user_id: user.id, product_id: productId, updated_at: new Date().toISOString() }])
+      .select()
+      .single()
+    if (error) {
+    	if (error.code === "23505") return { alreadyExists: true } // Already in wishlist
+    	throw error
+    }
+    return data
+  },
 
-  // Update product
-  updateProduct: async (productId: string, updates: Partial<Product>) => {
-    const { data, error } = await supabase
-      .from("products")
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq("id", productId)
-      .select()
-      .single()
+  // Remove product from wishlist
+  removeFromWishlist: async (productId: string) => {
+  	const { data: { user } } = await supabase.auth.getUser()
+  	if (!user) throw new Error("User not authenticated")
+  	const { error } = await supabase.from("wishlists").delete().eq("user_id", user.id).eq("product_id", productId)
+  	if (error) throw error
+  	return true
+  },
 
-    if (error) throw error
-    return data
-  },
+  // Get user's wishlist
+  getWishlist: async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return []
 
-  // Delete product
-  deleteProduct: async (productId: string) => {
-    const { error } = await supabase.from("products").delete().eq("id", productId)
+    const { data: wishlistItems, error } = await supabase
+      .from("wishlists")
+      .select("product_id")
+      .eq("user_id", user.id)
 
-    if (error) throw error
-  },
+    if (error || !wishlistItems || wishlistItems.length === 0) {
+    	if (error) console.error("Error fetching wishlist items:", error)
+    	return []
+    }
 
-  // Add product to wishlist
-  addToWishlist: async (productId: string) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) throw new Error("User not authenticated")
+    const productIds = wishlistItems.map((item) => item.product_id)
+    const { data: products, error: productsError } = await supabase
+    	.from("products")
+    	.select("*")
+    	.in("id", productIds)
 
-    try {
-      const { data, error } = await supabase
-        .from("wishlists")
-        .insert([
-          {
-            user_id: user.id,
-            product_id: productId,
-            updated_at: new Date().toISOString(),
-          },
-        ])
-        .select()
-        .single()
+  	if (productsError) {
+  		console.error("Error fetching wishlist products:", productsError)
+  		return []
+  	}
+  	if (!products || products.length === 0) return []
 
-      if (error) {
-        if (error.code === "23505") {
-          // Already in wishlist (unique constraint violation)
-          return { alreadyExists: true }
-        }
-        console.error("Supabase error:", error)
-        throw new Error(`Failed to add to wishlist: ${error.message}`)
-      }
+  	const sellerIds = [...new Set(products.map((product) => product.seller_id))]
+  	const { data: profiles, error: profilesError } = await supabase
+  		.from("user_profiles")
+  		.select("id, full_name, avatar_url")
+  		.in("id", sellerIds)
 
-      return data
-    } catch (error) {
-      console.error("Add to wishlist error:", error)
-      throw error
-    }
-  },
+  	if (profilesError) {
+  		console.error("Error fetching seller profiles for wishlist:", profilesError)
+  		// Return products without seller info as a fallback
+  		return products.map(p => ({...p, isWishlisted: true})) as Product[]
+  	}
 
-  // Remove product from wishlist
-  removeFromWishlist: async (productId: string) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) throw new Error("User not authenticated")
+  	const sellerProfiles = profiles
+  		? profiles.reduce(
+  			(map, profile) => {
+  				map[profile.id] = profile
+  				return map
+  			},
+  			{} as Record<string, { id: string; full_name: string; avatar_url?: string }>,
+  		)
+  		: {}
 
-    try {
-      const { error } = await supabase.from("wishlists").delete().eq("user_id", user.id).eq("product_id", productId)
-
-      if (error) {
-        console.error("Supabase error:", error)
-        throw new Error(`Failed to remove from wishlist: ${error.message}`)
-      }
-
-      return true
-    } catch (error) {
-      console.error("Remove from wishlist error:", error)
-      throw error
-    }
-  },
-
-  // Get user's wishlist
-  getWishlist: async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) throw new Error("User not authenticated")
-
-    try {
-      // Get wishlist items
-      const { data: wishlistItems, error } = await supabase
-        .from("wishlists")
-        .select("product_id")
-        .eq("user_id", user.id)
-
-      if (error) throw error
-
-      if (wishlistItems && wishlistItems.length > 0) {
-        // Get product details for each wishlist item
-        const productIds = wishlistItems.map((item) => item.product_id)
-
-        const { data: products, error: productsError } = await supabase
-          .from("products")
-          .select("*")
-          .in("id", productIds)
-
-        if (productsError) throw productsError
-
-        // Get seller profiles
-        if (products && products.length > 0) {
-          const sellerIds = [...new Set(products.map((product) => product.seller_id))]
-
-          const { data: profiles, error: profilesError } = await supabase
-            .from("user_profiles")
-            .select("id, full_name, avatar_url")
-            .in("id", sellerIds)
-
-          if (profilesError) throw profilesError
-
-          // Create a map of seller profiles
-          const sellerProfiles = profiles
-            ? profiles.reduce(
-                (map, profile) => {
-                  map[profile.id] = profile
-                  return map
-                },
-                {} as Record<string, { id: string; full_name: string; avatar_url?: string }>,
-              )
-            : {}
-
-          // Add seller info to each product
-          const productsWithSellers = products.map((product) => ({
-            ...product,
-            seller: sellerProfiles[product.seller_id] || { full_name: "Unknown Seller" },
-            isWishlisted: true,
-          }))
-
-          return productsWithSellers as Product[]
-        }
-
-        return products as Product[]
-      }
-
-      return [] as Product[]
-    } catch (error) {
-      console.error("Error fetching wishlist:", error)
-      return [] as Product[]
-    }
-  },
+  	return products.map((product) => ({
+  		...product,
+  		seller: sellerProfiles[product.seller_id] || { full_name: "Unknown Seller" },
+  		isWishlisted: true,
+  	})) as Product[]
+  },
 }
 
 export const profileService = {
-  // Get user profile
-  getProfile: async (userId: string) => {
-    const { data, error } = await supabase.from("user_profiles").select("*").eq("id", userId).single()
+  // Get user profile
+  getProfile: async (userId: string) => {
+    const { data, error } = await supabase.from("user_profiles").select("*").eq("id", userId).single()
 
-    if (error && error.code !== "PGRST116") throw error
-    return data as UserProfile | null
-  },
+    if (error && error.code !== "PGRST116") throw error
+    return data as UserProfile | null
+  },
 
-  // Create or update user profile
-  upsertProfile: async (profile: Partial<UserProfile>) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) throw new Error("User not authenticated")
+  // Create or update user profile
+  upsertProfile: async (profile: Partial<UserProfile>) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) throw new Error("User not authenticated")
 
-    const { data, error } = await supabase
-      .from("user_profiles")
-      .upsert({
-        id: user.id,
-        ...profile,
-        updated_at: new Date().toISOString(),
-      })
-      .select()
-      .single()
+    const { data, error } = await supabase
+      .from("user_profiles")
+      .upsert({
+        id: user.id,
+        ...profile,
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single()
 
-    if (error) throw error
-    return data
-  },
+    if (error) throw error
+    return data
+  },
 }

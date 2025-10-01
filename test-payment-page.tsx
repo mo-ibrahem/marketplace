@@ -1,14 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CreditCard, TestTube, CheckCircle, XCircle } from "lucide-react"
+import { CreditCard, TestTube, CheckCircle, XCircle, LogIn } from "lucide-react"
 import CheckoutForm from "@/components/checkout-form"
 import { useAuth } from "@/hooks/useAuth"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 const testCards = [
   {
@@ -57,12 +58,19 @@ const testProduct = {
 
 export default function TestPaymentPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const [showCheckout, setShowCheckout] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
 
+  // Reset state when user changes
+  useEffect(() => {
+    setShowCheckout(false)
+    setTestResult(null)
+  }, [user])
+
   const handleTestPayment = () => {
     if (!user) {
-      alert("Please sign in first to test payments")
+      router.push("/auth")
       return
     }
     setShowCheckout(true)
@@ -98,6 +106,19 @@ export default function TestPaymentPage() {
             different payment outcomes.
           </p>
         </div>
+
+        {/* Auth status */}
+        {!user && (
+          <Alert className="mb-6 border-blue-200 bg-blue-50">
+            <LogIn className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-800">
+              Please sign in to test payments. 
+              <Link href="/auth" className="ml-2 text-blue-600 hover:text-blue-800 underline">
+                Sign in now →
+              </Link>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Navigation */}
         <div className="mb-8 text-center">

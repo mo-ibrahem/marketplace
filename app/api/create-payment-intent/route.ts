@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
+import type { Database } from "@/lib/database.types"
 
 // Add error handling for missing Stripe
 let stripeService: any = null
@@ -18,30 +19,59 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Payment system not configured" }, { status: 500 })
     }
 
+    // Get cookies store first
     const cookieStore = cookies()
-    const supabaseClient = createRouteHandlerClient({ cookies: () => cookieStore })
 
-    // Get the authenticated user
+    // Create Supabase client for auth
+    const supabase = createRouteHandlerClient<Database>({ 
+      cookies: () => cookieStore 
+    })
+
+    // Get the session using the cookie-initialized client
     const {
-      data: { user },
-      error: authError,
-    } = await supabaseClient.auth.getUser()
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
 
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (sessionError) {
+      console.error("Session error:", sessionError)
+      return NextResponse.json({ error: "Authentication failed" }, { status: 401 })
     }
+
+    if (!session) {
+      console.error("No session found")
+      return NextResponse.json({ error: "Please sign in to make a payment" }, { status: 401 })
+    }
+
+    const user = session.user
+    if (!user || !user.id) {
+      console.error("No user in session")
+      return NextResponse.json({ error: "User not found in session" }, { status: 401 })
+    }
+
+    // Log successful auth
+    console.log("User authenticated:", user.id)
 
     const body = await request.json()
     const { productId, currency = "EGP" } = body
 
+    if (!productId) {
+      return NextResponse.json({ error: "Product ID is required" }, { status: 400 })
+    }
+
     // Get product details
-    const { data: product, error: productError } = await supabaseClient
+    const { data: product, error: productError } = await supabase
       .from("products")
       .select("*")
       .eq("id", productId)
       .single()
 
-    if (productError || !product) {
+    if (productError) {
+      console.error("Product fetch error:", productError)
+      return NextResponse.json({ error: "Failed to fetch product details" }, { status: 500 })
+    }
+
+    if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 })
     }
 
@@ -70,8 +100,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Store payment record in database
-    const { error: paymentError } = await supabaseClient.from("payments").insert({
-      id: paymentIntent.id,
+    const { error: paymentError } = await supabase.from("payments").insert({
       product_id: productId,
       buyer_id: user.id,
       seller_id: product.seller_id,
@@ -93,7 +122,10 @@ export async function POST(request: NextRequest) {
       currency,
     })
   } catch (error) {
-    console.error("Error creating payment intent:", error)
-    return NextResponse.json({ error: "Failed to create payment intent" }, { status: 500 })
+    console.error("Error creating payment intent:", error instanceof Error ? error.message : error)
+    return NextResponse.json(
+      { error: "Failed to create payment intent. Please try again." },
+      { status: 500 }
+    )
   }
 }

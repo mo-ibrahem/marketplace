@@ -3,7 +3,27 @@ import { createClient } from "@supabase/supabase-js"
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    storageKey: 'sb-auth-token',
+    storage: {
+      getItem: (key: string): string | null => {
+        if (typeof window === 'undefined') return null
+        const value = document.cookie.split('; ').find(row => row.startsWith(`${key}=`))?.split('=')[1]
+        return value || null
+      },
+      setItem: (key: string, value: string): void => {
+        if (typeof window === 'undefined') return
+        document.cookie = `${key}=${value}; path=/; max-age=28800; SameSite=Lax`
+      },
+      removeItem: (key: string): void => {
+        if (typeof window === 'undefined') return
+        document.cookie = `${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`
+      },
+    },
+  },
+})
 
 // Auth helper functions
 export const auth = {

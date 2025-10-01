@@ -12,9 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { CreditCard, Lock, AlertCircle } from "lucide-react"
+import { CreditCard, Lock, AlertCircle, LogIn } from "lucide-react"
 import { paymentService } from "@/lib/payments"
 import type { Product } from "@/lib/products"
+import { useAuth } from "@/hooks/useAuth"
+import Link from "next/link"
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
@@ -27,6 +29,7 @@ interface CheckoutFormProps {
 function CheckoutFormContent({ product, onSuccess, onCancel }: CheckoutFormProps) {
   const stripe = useStripe()
   const elements = useElements()
+  const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [currency, setCurrency] = useState("EGP")
@@ -91,23 +94,31 @@ function CheckoutFormContent({ product, onSuccess, onCancel }: CheckoutFormProps
     convertPrice()
   }, [currency, product.price])
 
-  // Create payment intent when component mounts
-  useEffect(() => {
-    const createPaymentIntent = async () => {
-      try {
-        const { clientSecret } = await paymentService.createPaymentIntent(product.id, currency)
-        setClientSecret(clientSecret)
-      } catch (error) {
-        setError(error instanceof Error ? error.message : "Failed to initialize payment")
-      }
+  // Create payment intent only when all required fields are filled
+  const createPaymentIntent = async () => {
+    if (!user) {
+      setError("Please sign in to make a payment")
+      return
     }
-    createPaymentIntent()
-  }, [product.id, currency])
+
+    try {
+      setLoading(true)
+      setError(null)
+      const { clientSecret } = await paymentService.createPaymentIntent(product.id, currency)
+      setClientSecret(clientSecret)
+      return clientSecret
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Failed to initialize payment")
+      return null
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
 
-    if (!stripe || !elements || !clientSecret) {
+    if (!stripe || !elements) {
       return
     }
 
@@ -121,8 +132,18 @@ function CheckoutFormContent({ product, onSuccess, onCancel }: CheckoutFormProps
       return
     }
 
+    // Get or create payment intent
+    let secret = clientSecret
+    if (!secret) {
+      secret = await createPaymentIntent()
+      if (!secret) {
+        setLoading(false)
+        return
+      }
+    }
+
     // Confirm payment
-    const { error: paymentError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+    const { error: paymentError, paymentIntent } = await stripe.confirmCardPayment(secret, {
       payment_method: {
         card: cardElement,
         billing_details: {
@@ -159,6 +180,42 @@ function CheckoutFormContent({ product, onSuccess, onCancel }: CheckoutFormProps
   }
 
   const selectedCurrency = currencies.find((c) => c.code === currency)
+
+  // If not authenticated, show sign in prompt
+  if (!user) {
+    return (
+      <div className="max-w-2xl mx-auto p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Authentication Required
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <Alert className="border-blue-200 bg-blue-50">
+              <LogIn className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-800">
+                Please sign in to proceed with the payment.
+              </AlertDescription>
+            </Alert>
+
+            <div className="flex gap-4">
+              <Button variant="outline" onClick={onCancel} className="flex-1">
+                Cancel
+              </Button>
+              <Link href="/auth" className="flex-1">
+                <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Sign In
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-2xl mx-auto p-6">

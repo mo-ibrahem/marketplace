@@ -8,7 +8,9 @@ import Link from "next/link"
 import { useAuth } from "@/hooks/useAuth"
 import { auth } from "@/lib/supabase"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-
+import { enableGlobalCursorStyles } from "react-resizable-panels"
+import Image from "next/image"
+import egybayLogo from "/egbay.svg"
 export default function Component() {
   const { user, loading } = useAuth()
 
@@ -56,8 +58,13 @@ export default function Component() {
             {/* Logo */}
             <div className="flex-shrink-0">
               <Link href="/" className="flex items-center">
-                <ShoppingCart className="h-8 w-8 text-blue-600" />
-                <span className="ml-2 text-2xl font-bold text-gray-900">MarketPlace</span>
+                   <Image 
+                src="/egbay.svg" // Path from the public directory
+                alt="EgyBay Logo" 
+                width={120} // Example width, adjust as needed
+                height={40} // Example height, adjust as needed
+              />
+
               </Link>
             </div>
 
@@ -147,7 +154,7 @@ export default function Component() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              {user ? `Welcome back, ${user.user_metadata?.full_name || "there"}!` : "Welcome to MarketPlace"}
+              {user ? `Welcome back, ${user.user_metadata?.full_name || "there"}!` : "Welcome to Egbay!"}
             </h1>
             <p className="text-xl md:text-2xl mb-8 text-blue-100">
               Discover amazing deals on millions of items from trusted sellers worldwide
@@ -262,10 +269,14 @@ export default function Component() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="flex items-center justify-center mb-4">
-              <ShoppingCart className="h-8 w-8 text-blue-400" />
-              <span className="ml-2 text-2xl font-bold">MarketPlace</span>
+               <Image 
+                  src="/egbay.svg" // Path from the public directory
+                  alt="EgyBay Logo" 
+                  width={120} // Example width, adjust as needed
+                  height={40} // Example height, adjust as needed
+                />
             </div>
-            <p className="text-gray-400">© 2024 MarketPlace. All rights reserved.</p>
+            <p className="text-gray-400">© 2025 Egbay. All rights reserved.</p>
           </div>
         </div>
       </footer>

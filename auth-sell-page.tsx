@@ -32,6 +32,7 @@ import Link from "next/link"
 import { auth } from "@/lib/supabase"
 import { productService } from "@/lib/products"
 import { useAuth } from "@/hooks/useAuth"
+import Image from "next/image"
 
 export default function AuthSellPage() {
   const searchParams = useSearchParams()
@@ -253,8 +254,12 @@ export default function AuthSellPage() {
           <div className="flex items-center justify-between h-16">
             <div className="flex-shrink-0">
               <Link href="/" className="flex items-center">
-                <ShoppingCart className="h-8 w-8 text-blue-600" />
-                <span className="ml-2 text-2xl font-bold text-gray-900">MarketPlace</span>
+ <Image 
+                                  src="/egbay.svg" // Path from the public directory
+                                  alt="EgyBay Logo" 
+                                  width={120} // Example width, adjust as needed
+                                  height={40} // Example height, adjust as needed
+                                />
               </Link>
             </div>
             <div className="flex items-center space-x-4">
