@@ -1,18 +1,23 @@
 "use client"
 
-import { Search, ShoppingCart, User, Smartphone, Shirt, Home, Baby, Tag } from "lucide-react"
+import { Search, ShoppingCart, User, Smartphone, Menu ,Shirt, Home, Baby, Tag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import Link from "next/link"
 import { useAuth } from "@/hooks/useAuth"
+import { useState } from "react";
+
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { auth } from "@/lib/supabase"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { enableGlobalCursorStyles } from "react-resizable-panels"
 import Image from "next/image"
-import egybayLogo from "/egbay.svg"
+import Navbar from "./components/navbar"
+
 export default function Component() {
   const { user, loading } = useAuth()
+const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const categories = [
     {
@@ -52,102 +57,7 @@ export default function Component() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Sticky Navbar */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <div className="flex-shrink-0">
-              <Link href="/" className="flex items-center">
-                   <Image 
-                src="/egbay.svg" // Path from the public directory
-                alt="EgyBay Logo" 
-                width={120} // Example width, adjust as needed
-                height={40} // Example height, adjust as needed
-              />
-
-              </Link>
-            </div>
-
-            {/* Centered Search Bar */}
-            <div className="flex-1 max-w-2xl mx-8">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" />
-                </div>
-                <Input
-                  type="text"
-                  placeholder="Search for anything..."
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-
-            {/* Navigation Links */}
-            <div className="flex items-center space-x-4">
-              <Link href="/products">
-                <Button variant="ghost" className="text-gray-700 hover:text-gray-900">
-                  Browse Products
-                </Button>
-              </Link>
-
-              {!loading && (
-                <>
-                  {user ? (
-                    <>
-                      <Link href="/auth?tab=sell">
-                        <Button
-                          variant="ghost"
-                          className="text-gray-700 hover:text-gray-900 hidden sm:flex items-center"
-                        >
-                          <Tag className="h-4 w-4 mr-2" />
-                          Sell
-                        </Button>
-                      </Link>
-                      <Link href="/profile">
-                        <Button variant="ghost" className="text-gray-700 hover:text-gray-900 flex items-center">
-                          <Avatar className="h-6 w-6 mr-2">
-                            <AvatarImage src="/placeholder.svg" />
-                            <AvatarFallback className="text-xs">
-                              {user.user_metadata?.full_name?.charAt(0) || user.email?.charAt(0) || "U"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="hidden md:block">
-                            {user.user_metadata?.full_name || user.email?.split("@")[0]}
-                          </span>
-                        </Button>
-                      </Link>
-                      <Button variant="ghost" onClick={handleSignOut} className="text-gray-700 hover:text-gray-900">
-                        Sign Out
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Link href="/auth?tab=sell">
-                        <Button
-                          variant="ghost"
-                          className="text-gray-700 hover:text-gray-900 hidden sm:flex items-center"
-                        >
-                          <Tag className="h-4 w-4 mr-2" />
-                          Sell
-                        </Button>
-                      </Link>
-                      <Link href="/auth">
-                        <Button variant="ghost" className="text-gray-700 hover:text-gray-900">
-                          <User className="h-4 w-4 mr-2" />
-                          Login
-                        </Button>
-                      </Link>
-                      <Link href="/auth?tab=signup">
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white">Sign Up</Button>
-                      </Link>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-blue-600 to-purple-700 text-white">

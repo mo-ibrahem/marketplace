@@ -2,9 +2,9 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.dev',
+  title: 'Welcome to egbay',
+  description: 'Egbay is an e-commerce platform for buying and selling products online.',
+  generator: 'egbay/ nextjs',
 }
 
 export default function RootLayout({

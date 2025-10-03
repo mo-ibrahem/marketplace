@@ -15,6 +15,7 @@ import Link from "next/link"
 import { productService, type Product } from "@/lib/products"
 import { useAuth } from "@/hooks/useAuth"
 import Image from "next/image"
+import Navbar from "./components/navbar"
 
 // Available categories
 const categories = [
@@ -169,56 +170,7 @@ export default function ProductListing() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Sticky Navbar */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <div className="flex-shrink-0">
-              <Link href="/" className="flex items-center">
-                 <Image 
-                        src="/egbay.svg" // Path from the public directory
-                        alt="EgyBay Logo" 
-                        width={120} // Example width, adjust as needed
-                        height={40} // Example height, adjust as needed
-                      />
-              </Link>
-            </div>
-
-            {/* Centered Search Bar */}
-            <div className="flex-1 max-w-2xl mx-8 hidden md:block">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" />
-                </div>
-                <Input
-                  type="text"
-                  placeholder="Search for anything..."
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Navigation Links */}
-            <div className="flex items-center space-x-4">
-              {user && (
-                <Link href="/profile">
-                  <Button variant="ghost" className="text-gray-700 hover:text-gray-900">
-                    <UserIcon className="h-4 w-4 mr-2" />
-                    Profile
-                  </Button>
-                </Link>
-              )}
-              <Link href="/auth">
-                <Button variant="ghost" className="text-gray-700 hover:text-gray-900">
-                  {user ? "Account" : "Login"}
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Navbar/>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
